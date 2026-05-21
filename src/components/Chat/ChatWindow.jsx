@@ -35,16 +35,7 @@ export default function ChatWindow({ onOpenSidebar }) {
 
     return (
         <div className="chat-window">
-            <div className="chat-header" style={{
-                padding: '1rem',
-                background: 'rgba(255,255,255,0.8)',
-                backdropFilter: 'blur(10px)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '1rem',
-                borderBottom: '1px solid rgba(0,0,0,0.05)',
-                zIndex: 10
-            }}>
+            <div className="chat-header">
                 {/* Mobile Menu Button - Visible < 768px via CSS */}
                 <button
                     className="mobile-menu-btn"
@@ -54,30 +45,30 @@ export default function ChatWindow({ onOpenSidebar }) {
                         display: 'none' // Hidden by default, shown via CSS query
                     }}
                 >
-                    <Menu size={24} color="#C71585" />
+                    <Menu size={24} color="var(--accent-deep)" />
                 </button>
 
                 <Avatar size="md" />
                 <div style={{ flex: 1 }}>
-                    <h3 style={{ margin: 0, color: '#333' }}>Bestiee</h3>
+                    <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>Bestiee</h3>
                     {isLoading ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <p style={{ margin: 0, fontSize: '0.8rem', color: '#FF69B4' }}>
+                            <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--accent)' }}>
                                 {loadingText} ({Math.round(progress)}%)
                             </p>
-                            <div style={{ width: '100px', height: '4px', background: '#eee', borderRadius: '2px', overflow: 'hidden' }}>
-                                <div style={{ width: `${progress}%`, height: '100%', background: '#FF69B4', transition: 'width 0.3s' }} />
+                            <div style={{ width: '100px', height: '4px', background: 'var(--progress-track)', borderRadius: '2px', overflow: 'hidden' }}>
+                                <div style={{ width: `${progress}%`, height: '100%', background: 'var(--accent)', transition: 'width 0.3s' }} />
                             </div>
                         </div>
                     ) : (
-                        <p style={{ margin: 0, fontSize: '0.8rem', color: '#666' }}>Always here for you ✨</p>
+                        <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Always here for you ✨</p>
                     )}
                 </div>
             </div>
 
             <div className="chat-content">
                 {messages.length === 0 && (
-                    <div style={{ textAlign: 'center', marginTop: '2rem', color: '#888' }}>
+                    <div style={{ textAlign: 'center', marginTop: '2rem', color: 'var(--text-faint)' }}>
                         <p>Say hi to your new best friend! ✨</p>
                         {!isReady && <p style={{ fontSize: '0.8rem', opacity: 0.7 }}>(Brain is loading in the background...)</p>}
                     </div>

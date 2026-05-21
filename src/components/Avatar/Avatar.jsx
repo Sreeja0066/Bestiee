@@ -53,15 +53,16 @@ const Avatar = ({ size = 'md' }) => {
                 style={{
                     width: '100%',
                     height: '100%',
-                    background: '#fff',
+                    background: 'var(--avatar-bg)',
                     borderRadius: '50%',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontSize: sizePx * 0.5,
-                    boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+                    boxShadow: '0 8px 32px var(--shadow-avatar)',
                     position: 'relative',
-                    zIndex: 1
+                    zIndex: 1,
+                    transition: 'background 0.35s ease'
                 }}
             >
                 <AnimatePresence mode="wait">

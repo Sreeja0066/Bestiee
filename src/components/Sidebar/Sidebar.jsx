@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { Menu, X, MessageSquare, Heart, Star, Settings, Search, Clock } from 'lucide-react';
+import { Menu, X, MessageSquare, Heart, Star, Settings, Search, Clock, Sun, Moon } from 'lucide-react';
 import { useLocalLLM } from '../../hooks/useLocalLLM';
+import useThemeStore from '../../hooks/useTheme';
 
 const Sidebar = ({ currentView, onViewChange, isOpen, setIsOpen }) => {
     const { logout, createNewChat, pastChats, loadChat } = useLocalLLM();
+    const { theme, toggleTheme } = useThemeStore();
 
     // Helper to close on mobile when navigating
     const navigate = (view) => {
@@ -42,7 +44,7 @@ const Sidebar = ({ currentView, onViewChange, isOpen, setIsOpen }) => {
                         cursor: 'pointer'
                     }}
                 >
-                    <X size={24} color="#666" />
+                    <X size={24} color="var(--text-muted)" />
                 </button>
 
                 <div className="sidebar-header">
@@ -58,7 +60,7 @@ const Sidebar = ({ currentView, onViewChange, isOpen, setIsOpen }) => {
                     />
                     <Search
                         size={16}
-                        color="#999"
+                        color="var(--text-placeholder)"
                         style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }}
                     />
                 </div>
@@ -88,9 +90,18 @@ const Sidebar = ({ currentView, onViewChange, isOpen, setIsOpen }) => {
                         <Star size={18} /> Favorites
                     </div>
 
+                    {/* Theme Toggle */}
+                    <div className="theme-toggle-wrapper" onClick={toggleTheme}>
+                        {theme === 'dark' ? <Moon size={18} /> : <Sun size={18} />}
+                        <span>{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
+                        <div className="theme-toggle-track">
+                            <div className="theme-toggle-thumb" />
+                        </div>
+                    </div>
+
                     {pastChats && pastChats.length > 0 && (
                         <div style={{ marginTop: '1rem' }}>
-                            <div style={{ fontSize: '0.8rem', color: '#999', padding: '0 1rem', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-placeholder)', padding: '0 1rem', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
                                 Saved Chats
                             </div>
                             <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
@@ -114,8 +125,8 @@ const Sidebar = ({ currentView, onViewChange, isOpen, setIsOpen }) => {
                         </div>
                     )}
 
-                    <div style={{ marginTop: 'auto', borderTop: '1px solid #eee', paddingTop: '10px' }}>
-                        <div className="menu-item" onClick={handleLogout} style={{ color: '#999' }}>
+                    <div style={{ marginTop: 'auto', borderTop: '1px solid var(--border-divider)', paddingTop: '10px' }}>
+                        <div className="menu-item" onClick={handleLogout} style={{ color: 'var(--text-placeholder)' }}>
                             <Settings size={18} /> Reset/Settings
                         </div>
                     </div>

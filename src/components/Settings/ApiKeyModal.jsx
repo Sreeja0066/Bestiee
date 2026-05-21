@@ -44,27 +44,28 @@ const ApiKeyModal = () => {
 
     return (
         <div className="api-modal-overlay" style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(5px)',
+            position: 'fixed', inset: 0, background: 'var(--modal-overlay)', backdropFilter: 'blur(5px)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
         }}>
             <div className="api-modal" style={{
-                background: 'white', padding: '2rem', borderRadius: '24px', width: '90%', maxWidth: '400px',
-                boxShadow: '0 20px 40px rgba(0,0,0,0.2)', textAlign: 'center'
+                background: 'var(--modal-bg)', padding: '2rem', borderRadius: '24px', width: '90%', maxWidth: '400px',
+                boxShadow: '0 20px 40px rgba(0,0,0,0.2)', textAlign: 'center',
+                border: '1px solid var(--border-primary)'
             }}>
                 <div style={{
-                    width: '60px', height: '60px', background: '#fef6fb', borderRadius: '50%',
+                    width: '60px', height: '60px', background: 'var(--bg-active)', borderRadius: '50%',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem'
                 }}>
-                    <Key color="#FF69B4" size={30} />
+                    <Key color="var(--accent)" size={30} />
                 </div>
 
-                <h2 style={{ margin: '0 0 0.5rem', color: '#333' }}>Unlock Bestiee</h2>
-                <p style={{ color: '#666', marginBottom: '1.5rem', lineHeight: '1.5' }}>
+                <h2 style={{ margin: '0 0 0.5rem', color: 'var(--text-primary)' }}>Unlock Bestiee</h2>
+                <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', lineHeight: '1.5' }}>
                     To make Bestiee fast and crash-free, we need a free GPU key.
                 </p>
 
                 <div style={{ textAlign: 'left', marginBottom: '1.5rem' }}>
-                    <label style={{ fontSize: '0.9rem', fontWeight: '600', color: '#444', marginBottom: '0.5rem', display: 'block' }}>
+                    <label style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'block' }}>
                         Enter Groq API Key
                     </label>
                     <input
@@ -73,12 +74,12 @@ const ApiKeyModal = () => {
                         onChange={(e) => setInputKey(e.target.value)}
                         placeholder="gsk_..."
                         style={{
-                            width: '100%', padding: '0.8rem', borderRadius: '12px', border: '1px solid #ddd',
-                            fontSize: '1rem', outline: 'none'
+                            width: '100%', padding: '0.8rem', borderRadius: '12px', border: '1px solid var(--border-divider)',
+                            fontSize: '1rem', outline: 'none', background: 'var(--bg-input)', color: 'var(--text-primary)'
                         }}
                     />
                     {status === 'error' && (
-                        <p style={{ color: 'red', fontSize: '0.85rem', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <p style={{ color: '#ff6b6b', fontSize: '0.85rem', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <AlertCircle size={14} /> Invalid Key. Please check and try again.
                         </p>
                     )}
@@ -89,7 +90,7 @@ const ApiKeyModal = () => {
                     disabled={status === 'validating' || !inputKey}
                     style={{
                         width: '100%', padding: '1rem', borderRadius: '14px', border: 'none',
-                        background: status === 'success' ? '#4CAF50' : '#FF69B4', color: 'white',
+                        background: status === 'success' ? '#4CAF50' : 'var(--accent)', color: 'white',
                         fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', transition: 'all 0.2s',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
                     }}
@@ -98,12 +99,12 @@ const ApiKeyModal = () => {
                     {status === 'success' && <CheckCircle size={20} />}
                 </button>
 
-                <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #eee' }}>
+                <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border-divider)' }}>
                     <a
                         href="https://console.groq.com/keys"
                         target="_blank"
                         rel="noopener noreferrer"
-                        style={{ color: '#666', textDecoration: 'none', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                        style={{ color: 'var(--text-muted)', textDecoration: 'none', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                     >
                         Get a free key here <ExternalLink size={14} />
                     </a>
