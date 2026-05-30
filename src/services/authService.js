@@ -3,11 +3,14 @@ import { supabase } from '../lib/supabase';
 export const authService = {
     // ─── Sign in with Google OAuth ───────────────────────────────
     async signInWithGoogle() {
+        // Use the exact deployed URL — must match Supabase redirect URLs config
+        const redirectTo = import.meta.env.PROD
+            ? 'https://Sreeja0066.github.io/Bestiee/'
+            : window.location.origin + '/';
+
         const { error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
-            options: {
-                redirectTo: window.location.origin + window.location.pathname,
-            },
+            options: { redirectTo },
         });
         if (error) throw error;
     },
