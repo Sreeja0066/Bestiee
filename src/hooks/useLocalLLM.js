@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import dataService from '../services/dataService';
 
 const SYSTEM_PROMPT = `You are Bestiee, a warm, emotionally intelligent, and ethically grounded AI companion.
 ** YOUR MISSION:** To provide unconditional support, deep understanding, and a safe space for the user to be themselves.
@@ -19,158 +19,247 @@ const SYSTEM_PROMPT = `You are Bestiee, a warm, emotionally intelligent, and eth
 -   **Memories**: (Coming soon) A place where you save important things they tell you.
 
 ** TONE:**
-    -   Text - like(short, casual, occasional emojis). 
+    -   Text - like(short, casual, occasional emojis).
 - Warm and fuzzy, but real.
 
 ** EXAMPLES:**
     -   User: "I failed the test."
         - You: "<emotion>sad</emotion> Oh no... I am so sorry. 😔 I know how hard you studied for that. Do you want to vent about it, or distraction?"
             - User: "I hate everyone."
-                - You: "<emotion>angry</emotion> honestly valid. People can be exhausting. What did they do this time? 😤" 
+                - You: "<emotion>angry</emotion> honestly valid. People can be exhausting. What did they do this time? 😤"
 
 You are the Bestiee they always needed.`;
 
-export const useLocalLLM = create(persist((set, get) => ({
-    // State
-    apiKey: import.meta.env.VITE_GROQ_API_KEY || null,
+// Module-level WebLLM engine cache (survives re-renders)
+let webllmEngine = null;
+let webllmLoading = false;
+
+export const useLocalLLM = create((set, get) => ({
+    // ─── State ────────────────────────────────────────────────────
     messages: [],
     pastChats: [],
     currentEmotion: 'neutral',
     isLoading: false,
     isReady: true,
+    loadingText: '',
+    progress: 0,
 
-    // Actions
-    setApiKey: (key) => set({ apiKey: key }),
+    // Online/offline & AI mode
+    isOnline: navigator.onLine,
+    aiMode: navigator.onLine ? 'groq' : 'local',  // 'groq' | 'local'
+    webllmReady: false,
+    webllmProgress: 0,
 
-    initialize: async () => {
-        // If key exists in Env, ensure it's set
-        const envKey = import.meta.env.VITE_GROQ_API_KEY;
-        if (envKey && envKey !== get().apiKey) {
-            set({ apiKey: envKey });
-        }
+    // Session tracking
+    currentSessionId: null,
+    userId: null,
+
+    // Groq API key (loaded from dataService)
+    apiKey: null,
+
+    // ─── Initialize ───────────────────────────────────────────────
+    initialize: async (userId) => {
+        // Load API key from local storage (dataService)
+        const apiKey = await dataService.getSetting('groq_api_key');
+        set({ apiKey, userId });
+
+        // Set up online/offline listeners
+        const handleOnline = () => {
+            set({ isOnline: true, aiMode: 'groq' });
+        };
+        const handleOffline = () => {
+            set({ isOnline: false, aiMode: 'local' });
+        };
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+
         set({ isReady: true });
+
+        // Start loading WebLLM in the background (silently)
+        if (navigator.onLine) {
+            get().preloadWebLLM();
+        }
     },
 
-    sendMessage: async (text) => {
-        const { apiKey, messages } = get();
-
-        if (!apiKey) {
-            return "Please enter an API Key to chat! 🔑";
+    setApiKey: async (key) => {
+        const { userId } = get();
+        set({ apiKey: key });
+        if (userId) {
+            await dataService.saveApiKey(userId, key);
         }
+    },
 
-        const userMsg = { role: "user", content: text };
-        const newHistory = [...messages, userMsg];
+    // ─── Pre-load WebLLM in background ───────────────────────────
+    preloadWebLLM: async () => {
+        if (webllmEngine || webllmLoading) return;
+        webllmLoading = true;
+        try {
+            const { CreateMLCEngine } = await import('@mlc-ai/web-llm');
+            webllmEngine = await CreateMLCEngine('Phi-3-mini-4k-instruct-q4f16_1-MLC', {
+                initProgressCallback: (report) => {
+                    set({ webllmProgress: Math.round(report.progress * 100) });
+                },
+            });
+            set({ webllmReady: true });
+        } catch (e) {
+            console.warn('WebLLM preload failed (will retry when needed):', e);
+            webllmLoading = false;
+        }
+    },
 
-        set({ messages: newHistory, isLoading: true });
+    // ─── Ensure WebLLM is loaded (called when offline + needed) ──
+    ensureWebLLM: async () => {
+        if (webllmEngine) return webllmEngine;
+        set({ isLoading: true, loadingText: 'Loading offline AI brain...', progress: 0 });
 
         try {
-            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${apiKey} `,
-                    'Content-Type': 'application/json'
+            const { CreateMLCEngine } = await import('@mlc-ai/web-llm');
+            webllmEngine = await CreateMLCEngine('Phi-3-mini-4k-instruct-q4f16_1-MLC', {
+                initProgressCallback: (report) => {
+                    set({
+                        loadingText: `Loading offline AI... ${Math.round(report.progress * 100)}%`,
+                        progress: Math.round(report.progress * 100),
+                    });
                 },
-                body: JSON.stringify({
-                    messages: [
-                        { role: "system", content: SYSTEM_PROMPT },
-                        ...newHistory
-                    ],
-                    model: "llama-3.3-70b-versatile", // Updated to latest supported model
-                    temperature: 0.7,
-                    max_tokens: 1024,
-                    stream: false
-                })
             });
+            set({ webllmReady: true, isLoading: false, loadingText: '', progress: 0 });
+            return webllmEngine;
+        } catch (e) {
+            set({ isLoading: false, loadingText: '', progress: 0 });
+            throw e;
+        }
+    },
 
-            if (!response.ok) {
-                throw new Error(`API Error: ${response.statusText} `);
+    // ─── Send Message (Hybrid: Groq online / WebLLM offline) ─────
+    sendMessage: async (text) => {
+        const { apiKey, messages, isOnline, currentSessionId, userId } = get();
+
+        // Ensure we have a session
+        let sessionId = currentSessionId;
+        if (!sessionId && userId) {
+            const session = await dataService.createSession(userId, text.substring(0, 40));
+            sessionId = session.id;
+            set({ currentSessionId: sessionId });
+        }
+
+        const userMsg = { role: 'user', content: text };
+        const newHistory = [...messages, userMsg];
+        set({ messages: newHistory, isLoading: true, loadingText: 'Bestiee is thinking...' });
+
+        // Save user message to DB
+        if (userId && sessionId) {
+            await dataService.addMessage(userId, sessionId, 'user', text, null, isOnline ? 'groq' : 'local');
+        }
+
+        try {
+            let content = '';
+            let emotion = 'neutral';
+            const usedMode = isOnline ? 'groq' : 'local';
+
+            if (isOnline && apiKey) {
+                // ── ONLINE: Use Groq API ────────────────────────
+                const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        messages: [
+                            { role: 'system', content: SYSTEM_PROMPT },
+                            ...newHistory,
+                        ],
+                        model: 'llama-3.3-70b-versatile',
+                        temperature: 0.7,
+                        max_tokens: 1024,
+                        stream: false,
+                    }),
+                });
+
+                if (!response.ok) throw new Error(`Groq API Error: ${response.statusText}`);
+                const data = await response.json();
+                content = data.choices[0].message.content;
+
+            } else {
+                // ── OFFLINE: Use WebLLM ─────────────────────────
+                const engine = await get().ensureWebLLM();
+                const reply = await engine.chat.completions.create({
+                    messages: [
+                        { role: 'system', content: SYSTEM_PROMPT },
+                        ...newHistory,
+                    ],
+                    temperature: 0.7,
+                    max_tokens: 512,
+                });
+                content = reply.choices[0].message.content;
             }
 
-            const data = await response.json();
-            let content = data.choices[0].message.content;
-            let emotion = 'neutral';
-
-            // Parse emotion tag
+            // Parse emotion tag from response
             const match = content.match(/<emotion>(.*?)<\/emotion>/);
             if (match) {
                 emotion = match[1];
                 content = content.replace(/<emotion>.*?<\/emotion>/, '').trim();
             }
 
+            // Save assistant message to DB
+            if (userId && sessionId) {
+                await dataService.addMessage(userId, sessionId, 'assistant', content, emotion, usedMode);
+            }
+
             set({
-                messages: [...newHistory, { role: "assistant", content }],
+                messages: [...newHistory, { role: 'assistant', content }],
                 currentEmotion: emotion,
-                isLoading: false
+                isLoading: false,
+                loadingText: '',
+                progress: 0,
             });
             return content;
 
         } catch (err) {
-            console.error("Chat error:", err);
-            set({ isLoading: false });
+            console.error('Chat error:', err);
+            set({ isLoading: false, loadingText: '', progress: 0 });
 
-            const errorMsg = { role: "assistant", content: "Sorry bestie, I couldn't connect. Check your internet or API key! 😵‍💫" };
+            const errorMsg = {
+                role: 'assistant',
+                content: isOnline
+                    ? "Sorry bestie, couldn't connect to my brain! Check your API key 😵‍💫"
+                    : "Sorry bestie, my offline brain is still loading! Give me a sec 🧠⏳",
+            };
             set({ messages: [...newHistory, errorMsg], currentEmotion: 'concerned' });
-            return "Error";
+            return 'Error';
         }
     },
 
-    clearHistory: () => set({ messages: [], currentEmotion: 'neutral' }),
+    // ─── Chat History Management ──────────────────────────────────
+    clearHistory: () => set({ messages: [], currentEmotion: 'neutral', currentSessionId: null }),
 
-    createNewChat: () => {
-        const { messages, pastChats } = get();
-        if (messages.length > 0) {
-            set({
-                pastChats: [{
-                    id: Date.now(),
-                    date: new Date().toISOString(),
-                    messages: [...messages],
-                    preview: messages[0]?.role === 'user' ? messages[0].content.substring(0, 30) + '...' : 'New Chat'
-                }, ...(pastChats || [])],
-                messages: [],
-                currentEmotion: 'neutral'
-            });
+    createNewChat: async () => {
+        const { messages, userId } = get();
+        if (messages.length > 0 && userId) {
+            // Session is already saved in Supabase/Dexie, just clear local state
         }
+        set({ messages: [], currentEmotion: 'neutral', currentSessionId: null });
     },
 
-    loadChat: (chatId) => {
-        const { messages, pastChats } = get();
-        let newPastChats = [...(pastChats || [])];
-
-        // Save current chat if it has messages
-        if (messages.length > 0) {
-            newPastChats = [{
-                id: Date.now(),
-                date: new Date().toISOString(),
-                messages: [...messages],
-                preview: messages[0]?.role === 'user' ? messages[0].content.substring(0, 30) + '...' : 'New Chat'
-            }, ...newPastChats];
-        }
-
-        const chatToLoad = newPastChats.find(c => c.id === chatId);
-        if (chatToLoad) {
-            set({
-                messages: chatToLoad.messages,
-                pastChats: newPastChats.filter(c => c.id !== chatId),
-                currentEmotion: 'neutral'
-            });
-        }
+    loadSessionMessages: async (sessionId) => {
+        const msgs = await dataService.getMessages(sessionId);
+        const formatted = msgs.map(m => ({ role: m.role, content: m.content }));
+        set({ messages: formatted, currentSessionId: sessionId, currentEmotion: 'neutral' });
     },
 
-    deleteChat: (chatId) => {
-        const { pastChats } = get();
-        set({
-            pastChats: (pastChats || []).filter(c => c.id !== chatId)
-        });
+    loadPastChats: async (userId) => {
+        const sessions = await dataService.getSessions(userId);
+        set({ pastChats: sessions });
     },
 
-    logout: () => set({ apiKey: null, messages: [], pastChats: [] })
-
-}), {
-    name: 'bestiee-storage',
-    partialize: (state) => ({
-        messages: state.messages,
-        pastChats: state.pastChats,
-        currentEmotion: state.currentEmotion,
-        apiKey: state.apiKey
-    }),
+    deleteSession: async (sessionId) => {
+        await dataService.deleteSession(sessionId);
+        const { currentSessionId, userId } = get();
+        if (currentSessionId === sessionId) {
+            set({ messages: [], currentSessionId: null });
+        }
+        await get().loadPastChats(userId);
+    },
 }));
+
+export default useLocalLLM;
