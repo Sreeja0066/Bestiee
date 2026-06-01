@@ -92,7 +92,7 @@ const Sidebar = ({ currentView, onViewChange, isOpen, setIsOpen }) => {
                                 : <WifiOff size={10} color="#ff9500" />
                             }
                             <span style={{ fontSize: '0.7rem', color: isOnline ? '#34c759' : '#ff9500' }}>
-                                {isOnline ? 'Online · Groq AI' : `Offline · Local AI${!webllmReady ? ` (${webllmProgress}%)` : ''}`}
+                                {isOnline ? 'Online · Bestiee AI' : `Offline · Local AI${!webllmReady ? ` (${webllmProgress}%)` : ''}`}
                             </span>
                         </div>
                     </div>

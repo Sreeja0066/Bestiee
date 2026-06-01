@@ -5,7 +5,6 @@ import ChatInput from "./ChatInput";
 import MessageBubble from "./MessageBubble";
 import Avatar from "../Avatar/Avatar";
 import OfflineBadge from "../OfflineBadge/OfflineBadge";
-import ApiKeyModal from "../Settings/ApiKeyModal";
 import { Menu } from "lucide-react";
 
 export default function ChatWindow({ onOpenSidebar }) {
@@ -34,9 +33,6 @@ export default function ChatWindow({ onOpenSidebar }) {
 
     return (
         <div className="chat-window">
-            {/* API Key modal if no key yet */}
-            <ApiKeyModal />
-
             <div className="chat-header">
                 {/* Mobile menu button */}
                 <button
