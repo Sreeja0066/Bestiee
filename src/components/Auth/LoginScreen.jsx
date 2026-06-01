@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import authService from '../../services/authService';
 import EmailAuthForm from './EmailAuthForm';
@@ -9,6 +9,25 @@ export default function LoginScreen() {
     const [consentTerms, setConsentTerms] = useState(false);
     const [error, setError] = useState('');
     const [googleLoading, setGoogleLoading] = useState(false);
+
+    useEffect(() => {
+        // Detect redirect error in URL hash on mount
+        if (window.location.hash) {
+            try {
+                const hashParams = new URLSearchParams(window.location.hash.substring(1));
+                if (hashParams.has('error') || hashParams.has('error_description')) {
+                    const errName = hashParams.get('error') || 'auth_error';
+                    const errDesc = decodeURIComponent(hashParams.get('error_description') || 'Google sign-in failed.');
+                    setError(`Google Login Error: ${errDesc} (${errName})`);
+                    
+                    // Clean up URL hash so refreshing doesn't keep showing the error
+                    window.history.replaceState(null, null, window.location.pathname);
+                }
+            } catch (e) {
+                console.error('Error reading hash error:', e);
+            }
+        }
+    }, []);
 
     const handleGoogle = async () => {
         if (!consentTerms) {
