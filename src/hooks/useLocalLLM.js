@@ -77,11 +77,6 @@ export const useLocalLLM = create((set, get) => ({
         window.addEventListener('offline', handleOffline);
 
         set({ isReady: true });
-
-        // Start loading WebLLM in the background (silently)
-        if (navigator.onLine) {
-            get().preloadWebLLM();
-        }
     },
 
     setApiKey: async (key) => {
