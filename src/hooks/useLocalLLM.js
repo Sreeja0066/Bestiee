@@ -60,7 +60,10 @@ export const useLocalLLM = create((set, get) => ({
     // ─── Initialize ───────────────────────────────────────────────
     initialize: async (userId) => {
         // Load API key from local storage (dataService)
-        const apiKey = await dataService.getSetting('groq_api_key');
+        let apiKey = await dataService.getSetting('groq_api_key');
+        if (!apiKey) {
+            apiKey = import.meta.env.VITE_GROQ_API_KEY || null;
+        }
         set({ apiKey, userId });
 
         // Set up online/offline listeners
